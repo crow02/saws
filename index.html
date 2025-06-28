@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็กชื่อนักเรียน</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>📚 ระบบเช็กชื่อนักเรียน</h1>
+        
+        <div class="alert success" id="successAlert"></div>
+        <div class="alert error" id="errorAlert"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('setup')">⚙️ ตั้งค่า</button>
+            <button class="tab" onclick="switchTab('attendance')">✅ เช็กชื่อ</button>
+            <button class="tab" onclick="switchTab('report')">📊 รายงาน</button>
+        </div>
+
+        <!-- Setup Tab -->
+        <div id="setup" class="tab-content active">
+            <div class="section">
+                <h2>⚙️ ตั้งค่าห้องเรียน</h2>
+                <div class="form-group">
+                    <label for="classSelect">เลือกห้องเรียน:</label>
+                    <select id="classSelect" onchange="loadStudents()">
+                        <option value="">-- เลือกห้องเรียน --</option>
+                        <option value="1/1">ชั้น ม.1/1</option>
+                        <option value="1/2">ชั้น ม.1/2</option>
+                        <option value="2/1">ชั้น ม.2/1</option>
+                        <option value="2/2">ชั้น ม.2/2</option>
+                        <option value="3/1">ชั้น ม.3/1</option>
+                        <option value="3/2">ชั้น ม.3/2</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="teacherName">ชื่อครูผู้เช็กชื่อ:</label>
+                    <input type="text" id="teacherName" placeholder="กรอกชื่อครูผู้เช็กชื่อ">
+                </div>
+
+                <div class="form-group">
+                    <label for="timeSlot">ช่วงเวลา:</label>
+                    <select id="timeSlot">
+                        <option value="">-- เลือกช่วงเวลา --</option>
+                        <option value="morning">🌅 ภาคเช้า (08:00 - 12:00)</option>
+                        <option value="afternoon">☀️ ภาคบ่าย (13:00 - 16:00)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📊 นำเข้ารายชื่อจาก Google Sheets</h2>
+                <div style="background: #e8f5e9; padding: 15px; border-radius: 8px;">
+                    <div class="form-group">
+                        <label for="spreadsheetId">Spreadsheet ID:</label>
+                        <input type="text" id="spreadsheetId" placeholder="เช่น 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms">
+                        <small style="color: #666;">ดู ID ได้จาก URL ของ Google Sheets (พิมพ์ "demo" เพื่อดูตัวอย่าง)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="sheetRange">ช่วงข้อมูล (Range):</label>
+                        <input type="text" id="sheetRange" placeholder="เช่น Sheet1!A2:C50" value="Sheet1!A2:C">
+                        <small style="color: #666;">รูปแบบ: ชื่อแผ่นงาน!คอลัมน์เริ่มต้นแถวเริ่มต้น:คอลัมน์สิ้นสุด</small>
+                    </div>
+                    <button onclick="importFromSheets()" style="background: #34a853;">
+                        📥 นำเข้ารายชื่อจาก Google Sheets
+                    </button>
+                    <button onclick="showImportHelp()" style="background: #4285f4;">
+                        ❓ วิธีตั้งค่า Google Sheets
+                    </button>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="clearAllStudents()" style="background: #dc3545;">🗑️ ลบนักเรียนทั้งหมด</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Tab -->
+        <div id="attendance" class="tab-content">
+            <div class="section">
+                <h2>✅ เช็กชื่อประจำวัน</h2>
+                <p>วันที่: <strong id="currentDate"></strong></p>
+                <p>ห้องเรียน: <strong id="currentClass">-</strong></p>
+                <p>ครูผู้สอน: <strong id="currentTeacher">-</strong></p>
+                <p>ช่วงเวลา: <strong id="currentTimeSlot">-</strong></p>
+                
+                <div class="summary">
+                    <div class="summary-card" style="border-left: 4px solid #28a745;">
+                        <div class="summary-number" id="presentCount">0</div>
+                        <div>มาเรียน</div>
+                    </div>
+                    <div class="summary-card" style="border-left: 4px solid #dc3545;">
+                        <div class="summary-number" id="absentCount">0</div>
+                        <div>ขาดเรียน</div>
+                    </div>
+                    <div class="summary-card" style="border-left: 4px solid #ffc107;">
+                        <div class="summary-number" id="sickCount">0</div>
+                        <div>ลาป่วย</div>
+                    </div>
+                    <div class="summary-card" style="border-left: 4px solid #17a2b8;">
+                        <div class="summary-number" id="activityCount">0</div>
+                        <div>ไปกิจกรรม</div>
+                    </div>
+                    <div class="summary-card" style="border-left: 4px solid #6c757d;">
+                        <div class="summary-number" id="homeCount">0</div>
+                        <div>ลากลับบ้าน</div>
+                    </div>
+                </div>
+
+                <div class="attendance-grid" id="attendanceGrid">
+                    <!-- Student cards will be dynamically added here -->
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="saveAttendance()" style="padding: 15px 40px; font-size: 18px;">
+                        💾 บันทึกการเช็กชื่อ
+                    </button>
+                    <button onclick="exportToSheets()" style="padding: 15px 40px; font-size: 18px; background: #34a853;">
+                        📊 ส่งออกไปยัง Google Sheets
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Tab -->
+        <div id="report" class="tab-content">
+            <div class="section">
+                <h2>📊 รายงานการเช็กชื่อ</h2>
+                <div class="form-group">
+                    <label for="reportDate">เลือกวันที่:</label>
+                    <input type="date" id="reportDate" onchange="loadReport()">
+                </div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>กำลังโหลดข้อมูล...</p>
+                </div>
+
+                <table class="attendance-table" id="reportTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>เวลา</th>
+                            <th>รหัสนักเรียน</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>สถานะ</th>
+                            <th>ครูผู้เช็ก</th>
+                            <th>ช่วงเวลา</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportBody">
+                        <!-- Report rows will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Help Modal -->
+    <div id="importHelpModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📊 วิธีตั้งค่า Google Sheets สำหรับนำเข้าข้อมูล</h2>
+                <span class="close" onclick="closeModal('importHelpModal')">&times;</span>
+            </div>
+            
+            <div class="help-section">
+                <h3>📋 1. เตรียม Google Sheets</h3>
+                <p>สร้าง Google Sheets ใหม่หรือใช้ที่มีอยู่แล้ว โดยจัดรูปแบบข้อมูลดังนี้:</p>
+                <div class="code-block">
+                    คอลัมน์ A: รหัสนักเรียน
+                    คอลัมน์ B: ชื่อ-นามสกุล  
+                    คอลัมน์ C: ห้องเรียน (เช่น 1/1, 1/2, 2/1)
+                </div>
+                <p>ตัวอย่าง:</p>
+                <table class="preview-table">
+                    <tr>
+                        <th>A</th>
+                        <th>B</th>
+                        <th>C</th>
+                    </tr>
+                    <tr>
+                        <td>12345</td>
+                        <td>สมชาย ใจดี</td>
+                        <td>1/1</td>
+                    </tr>
+                    <tr>
+                        <td>12346</td>
+                        <td>สมหญิง รักเรียน</td>
+                        <td>1/1</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="help-section">
+                <h3>🔗 2. หา Spreadsheet ID</h3>
+                <p>เปิด Google Sheets แล้วดู URL จะเจอ ID อยู่ตรงกลาง:</p>
+                <div class="code-block">
+                    https://docs.google.com/spreadsheets/d/<span style="color: #d73a49; font-weight: bold;">1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms</span>/edit
+                </div>
+                <p>ส่วนที่เป็นสีแดงคือ Spreadsheet ID</p>
+            </div>
+
+            <div class="help-section">
+                <h3>🔓 3. ตั้งค่าการแชร์</h3>
+                <p>คลิกปุ่ม "แชร์" ที่มุมขวาบน แล้วเลือก:</p>
+                <ul style="margin-left: 20px; color: #555;">
+                    <li>เปลี่ยนเป็น "ทุกคนที่มีลิงก์"</li>
+                    <li>สิทธิ์: "ผู้ดู" (Viewer)</li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>⚡ 4. เปิดใช้งาน Google Sheets API</h3>
+                <p>สำหรับการใช้งานจริง คุณต้อง:</p>
+                <ul style="margin-left: 20px; color: #555;">
+                    <li>ไปที่ Google Cloud Console</li>
+                    <li>เปิดใช้งาน Google Sheets API</li>
+                    <li>สร้าง API Key หรือ OAuth 2.0 credentials</li>
+                </ul>
+            </div>
+
+            <div class="help-section" style="background: #fff3cd; padding: 15px; border-radius: 8px;">
+                <h3>⚠️ หมายเหตุสำคัญ</h3>
+                <p>ฟังก์ชันนี้จะไม่ทำงานใน Claude.ai เนื่องจากข้อจำกัดด้านความปลอดภัย คุณต้องนำโค้ดไปใช้ในเซิร์ฟเวอร์ของคุณเองและตั้งค่า API Key</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Preview Modal -->
+    <div id="importPreviewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📥 ตรวจสอบข้อมูลก่อนนำเข้า</h2>
+                <span class="close" onclick="closeModal('importPreviewModal')">&times;</span>
+            </div>
+            
+            <div id="importPreviewContent" class="import-preview">
+                <!-- Preview content will be inserted here -->
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center;">
+                <button onclick="confirmImport()" style="background: #28a745;">
+                    ✅ ยืนยันการนำเข้า
+                </button>
+                <button onclick="closeModal('importPreviewModal')" style="background: #6c757d;">
+                    ❌ ยกเลิก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
